@@ -4,12 +4,27 @@ exports.stringify = exports.encode = encode
 exports.safe = safe
 exports.unsafe = unsafe
 
+//Added these to module exports for example purposes.
+exports.dotSplit = dotSplit
+exports.isQuoted = isQuoted
+
+//End of line characters depends on system
 var eol = process.platform === 'win32' ? '\r\n' : '\n'
 
+/**
+ * Given a JS object, return a properly formatted .ini string.
+ * @param {object} obj - The object to be encoded.
+ * @param {object/string} opt - The options for encoding, which can be an object with attributes section and whitespace
+	*	@attr {string} section - A section header prefix for each section, defaults to none.
+	*	@attr {bool} whitespace - True will add whitespaces before and after the = sign, false will ommit them. 
+ * If opt is read as a string, then the method will assume opt is the value for section.
+ * @returns a string properly structured as an .ini file
+*/
 function encode (obj, opt) {
   var children = []
   var out = ''
 
+  //Test type of opt to determine if it's the value for section
   if (typeof opt === 'string') {
     opt = {
       section: opt,
@@ -22,12 +37,15 @@ function encode (obj, opt) {
 
   var separator = opt.whitespace ? ' = ' : '='
 
+  //Main loop through obj's attributes, will append to out the correct structure.
   Object.keys(obj).forEach(function (k, _, __) {
     var val = obj[k]
+	//Loop to display arrays.
     if (val && Array.isArray(val)) {
       val.forEach(function (item) {
         out += safe(k + '[]') + separator + safe(item) + '\n'
       })
+	  //Deal with objects by assigning them to children.
     } else if (val && typeof val === 'object') {
       children.push(k)
     } else {
@@ -35,10 +53,11 @@ function encode (obj, opt) {
     }
   })
 
+  //Insert section header prefix if specified.
   if (opt.section && out.length) {
     out = '[' + safe(opt.section) + ']' + eol + out
   }
-
+  //Go through objects to display, recursively call them back to encode if children are objects.
   children.forEach(function (k, _, __) {
     var nk = dotSplit(k).join('\\.')
     var section = (opt.section ? opt.section + '.' : '') + nk
@@ -55,6 +74,11 @@ function encode (obj, opt) {
   return out
 }
 
+/**
+ * Basic function used to split on the string literal of a period or dot.
+ * @param {object} str - The string to be split.
+ * @returns an array delimited by the unicode literal of a period or dot.
+*/
 function dotSplit (str) {
   return str.replace(/\1/g, '\u0002LITERAL\\1LITERAL\u0002')
     .replace(/\\\./g, '\u0001')
@@ -138,11 +162,21 @@ function decode (str) {
   return out
 }
 
+/**
+ * Determines if the string passed to it is surrounded by quotes (single or double).
+ * @param {string} val - The string to be tested.
+ * @returns True if the string begins and starts with ' or ", False if not.
+*/
 function isQuoted (val) {
   return (val.charAt(0) === '"' && val.slice(-1) === '"') ||
     (val.charAt(0) === "'" && val.slice(-1) === "'")
 }
 
+/**
+ * Sanitizes input for use as a key or value in an .ini file.
+ * @param {string} val - The string to be escaped.
+ * @returns an string where each character with a conflict with .ini file standards is escaped.
+*/
 function safe (val) {
   return (typeof val !== 'string' ||
     val.match(/[=\r\n]/) ||
@@ -154,6 +188,12 @@ function safe (val) {
       val.replace(/;/g, '\\;').replace(/#/g, '\\#')
 }
 
+/**
+ * Unescapes all escaped characters contained in the string passed in.
+ * @param {string} val - The string to be escaped.
+ * @param {object} doUnesc - Not used.
+ * @returns a string with all instances of an escaped character unescaped, specifically those escaped by the safe method.
+*/
 function unsafe (val, doUnesc) {
   val = (val || '').trim()
   if (isQuoted(val)) {
