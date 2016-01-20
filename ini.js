@@ -88,6 +88,11 @@ function dotSplit (str) {
   })
 }
 
+/**
+ * Takes a string in the .ini format and converts it to a nested JS object.
+ * @param {object} str - The .ini string read from a .ini file to be decoded.
+ * @returns a JS object with attributes and keys relevant to the .ini file.
+*/
 function decode (str) {
   var out = {}
   var p = out
@@ -96,10 +101,13 @@ function decode (str) {
   var re = /^\[([^\]]*)\]$|^([^=]+)(=(.*))?$/i
   var lines = str.split(/[\r\n]+/g)
 
+  //Loop through each line of read string.
   lines.forEach(function (line, _, __) {
+	//regex to filter out comment chars.
     if (!line || line.match(/^\s*[;#]/)) return
     var match = line.match(re)
     if (!match) return
+	//If section is not undefined.
     if (match[1] !== undefined) {
       section = unsafe(match[1])
       p = out[section] = out[section] || {}
